@@ -1,4 +1,4 @@
 <launch>
     <node pkg="turtlesim" type="turtlesim_node" name="sim" />
-    <node pkg="p1_fehrerm" type="p1a.py" name="turtle_controller"></node>
+    <node pkg="p1_fehrerm" type="p1a.py" name="turtle_controller" output="screen"></node>
 </launch>
