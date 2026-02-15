@@ -3,10 +3,11 @@ import math
 import random
 import rospy
 from geometry_msgs.msg import Twist
+from turtlesim.msg import Pose
 from turtlesim.srv import Kill, Spawn
 
-hunter_pos = [0, 0]
-runner_pos = [0, 0]
+hunter_pos = [5, 5, 0]
+runner_pos = [8, 8]
 
 def too_close():
     x = hunter_pos
@@ -18,6 +19,7 @@ def too_close():
 def hunter_subscriber_callback(message):
     hunter_pos[0] = message.x
     hunter_pos[1] = message.y
+    hunter_pos[2] = message.theta
 
 def runner_subscriber_callback(message):
     runner_pos[0] = message.x
@@ -37,32 +39,41 @@ def p1a():
     hz = 10
     rate = rospy.Rate(hz)
     kill_proxy("turtle1")
+    spawn_proxy(hunter_pos[0], hunter_pos[1], 0, "hunter")
+    spawn_proxy(runner_pos[0], runner_pos[1], 0, "runner")
 
     time_since_last_runner_direction_change = 0
-    runner_direction = []
+    runner_direction = 0
 
     while not rospy.is_shutdown():
         if too_close():
             kill_proxy("runner")
-
-            x = random.uniform(1, 10)
-            y = random.uniform(1, 10)
-            theta = random.uniform(0, math.pi * 2)
-            spawn_proxy(x, y, theta, "runner")
+            theta = random.uniform(0, 2 * math.pi)
+            spawn_proxy(random.uniform(1, 10), random.uniform(1, 10), theta, "runner")
 
         # control the runner
         if time_since_last_runner_direction_change >= 2:
-            runner_direction[0] = random.uniform(0, 1)
-            runner_direction[1] = random.uniform(0, 1)
+            runner_direction = random.uniform(-1, 1)
             time_since_last_runner_direction_change = 0
         control_message = Twist()
         control_message.linear.x = 1
-        control_message.angular = runner_direction
+        control_message.angular.z = runner_direction
         runner_publisher.publish(control_message)
         time_since_last_runner_direction_change += 1 / hz
 
         # control the hunter
-        # ...
+        dx = runner_pos[0] - hunter_pos[0]
+        dy = runner_pos[1] - hunter_pos[1]
+        desired_theta = math.atan2(dy, dx)
+        angle_difference = desired_theta - hunter_pos[2]
+        if angle_difference > math.pi:
+            angle_difference -= 2 * math.pi
+        elif angle_difference < -math.pi:
+            angle_difference += 2 * math.pi
+        hunter_message = Twist()
+        hunter_message.linear.x = 1
+        hunter_message.angular.z = 3 * angle_difference
+        hunter_publisher.publish(hunter_message)
 
         rate.sleep()
 
